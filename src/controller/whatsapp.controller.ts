@@ -45,6 +45,13 @@ class WhatsappController {
         res.send(response);
     };
 
+
+    public initializeServer = async (req: Request, res: Response) => {
+        const response = await whatsappService.initializeServer()
+        res.send(response);
+    };
+
+
     public closeSession = async (req: Request, res: Response) => {
         const response = await whatsappService.closeSession()
         res.send(response);

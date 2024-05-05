@@ -10,5 +10,6 @@ whatsappRoute.post('/file', upload.single('file'), whatsappController.sendMsgFil
 whatsappRoute.post('/chat', whatsappController.getMsgCtrl)
 whatsappRoute.get('/client', whatsappController.getClient)
 whatsappRoute.post('/close', whatsappController.closeSession)
+whatsappRoute.post('/initialize', whatsappController.initializeServer)
 whatsappRoute.get('/status', whatsappController.getStatus)
 

@@ -83,6 +83,29 @@ class WhatsappService extends Client {
         }
     }
 
+    async initializeServer() {
+        console.log("Iniciando....");
+
+        this.initialize();
+
+        this.on("ready", () => {
+            this.status = true;
+            console.log("REINICIO::::: LOGIN_SUCCESS");
+        });
+
+        this.on("auth_failure", () => {
+            this.status = false;
+            console.log("REINICIO::::: LOGIN_FAIL");
+        });
+
+        this.on("qr", (qr) => {
+            console.log("REINICIO::::: Escanea el codigo QR que esta en la carepta tmp");
+            this.generateImage(qr);
+        });
+
+        return this.status;
+    }
+
     async sendMsgText(message: MessageModel): Promise<any> {
         try {
             if (!this.status) return Promise.resolve({ error: "SIN INICIO DE SESION" });
