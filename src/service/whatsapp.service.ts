@@ -1,6 +1,6 @@
 import { Client, LocalAuth, MessageMedia, MessageSendOptions } from "whatsapp-web.js";
 import { image as imageQr } from "qr-image";
-import fs from "fs"
+import fs from "fs/promises"
 import { MessageModel } from "../model/message.model";
 
 /**
@@ -19,9 +19,11 @@ class WhatsappService extends Client {
     constructor() {
         super({
             authStrategy: new LocalAuth(),
+            restartOnAuthFail: true,
             puppeteer: {
                 headless: true,
-                args: ['--no-sandbox', '--disable-setuid-sandbox', '--unhandled-rejections=strict'],
+                args: ['--no-sandbox'],
+                //, '--disable-setuid-sandbox', '--unhandled-rejections=strict'
                 //executablePath: 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
             },
             webVersionCache: {
@@ -50,9 +52,40 @@ class WhatsappService extends Client {
     }
 
 
+    async getClientSession(): Promise<any> {
+        try {
+            if (!this.status) return Promise.resolve({ error: "SIN INICIO DE SESION" });
+
+            const response = this.info;
+            return response;
+        } catch (e: any) {
+            console.log(e.message)
+            return Promise.resolve({ error: e.message });
+        }
+    }
+
+    async closeSession() {
+        try {
+
+            this.logout()
+                .then(() => {
+                    console.log("Sesión cerrada correctamente.");
+                    this.status = false
+                })
+                .catch((error) => {
+                    console.error("Error al cerrar sesión:", error);
+                });
+
+            return true;
+        } catch (error) {
+            console.error('Error al cerrar la conexión:', error);
+            return false;
+        }
+    }
+
     async sendMsgText(message: MessageModel): Promise<any> {
         try {
-            if (!this.status) return Promise.resolve({ error: "WAIT_LOGIN" });
+            if (!this.status) return Promise.resolve({ error: "SIN INICIO DE SESION" });
 
             const response = await this.sendMessage(`${message.phone}@c.us`, message.message);
             return response.id;
@@ -65,7 +98,7 @@ class WhatsappService extends Client {
 
     async sendMsgFile(message: MessageModel): Promise<any> {
         try {
-            if (!this.status) return Promise.resolve({ error: "WAIT_LOGIN" });
+            if (!this.status) return Promise.resolve({ error: "SIN INICIO DE SESION" });
 
             const media = new MessageMedia("application/pdf", message.file!, "document")
 
@@ -84,7 +117,7 @@ class WhatsappService extends Client {
 
     async getMsg(id: string) {
         try {
-            if (!this.status) return Promise.resolve({ error: "WAIT_LOGIN" });
+            if (!this.status) return Promise.resolve({ error: "SIN INICIO DE SESION" });
 
             const message = await this.getMessageById(id)
 
@@ -98,6 +131,8 @@ class WhatsappService extends Client {
     getStatus(): boolean {
         return this.status;
     }
+
+
 
     private generateImage = (base64: string) => {
         const path = `${process.cwd()}/tmp`;

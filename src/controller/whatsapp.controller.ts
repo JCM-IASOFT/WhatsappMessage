@@ -40,6 +40,22 @@ class WhatsappController {
         res.send(response);
     };
 
+    public getClient = async (req: Request, res: Response) => {
+        const response: ResponseWtsp = await whatsappService.getClientSession()
+        res.send(response);
+    };
+
+    public closeSession = async (req: Request, res: Response) => {
+        const response = await whatsappService.closeSession()
+        res.send(response);
+    };
+
+    public getStatus = async (req: Request, res: Response) => {
+        const response = whatsappService.getStatus()
+        res.send(response);
+    };
+
+
     public getMsgCtrl = async (req: Request, res: Response) => {
         try {
             const { id } = req.body;
