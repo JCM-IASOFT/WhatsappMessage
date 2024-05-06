@@ -1,7 +1,9 @@
-import { Client, LocalAuth, MessageMedia, MessageSendOptions } from "whatsapp-web.js";
+import { Client, LocalAuth, Message, MessageMedia, MessageSendOptions } from "whatsapp-web.js";
 import { image as imageQr } from "qr-image";
 import fs from "fs/promises"
 import { MessageModel } from "../model/message.model";
+import { surveyMiddleware } from "../api/survey";
+import { SurveyModel } from "../core/interface/survey";
 
 /**
  * Extendemos los super poderes de whatsapp-web
@@ -49,8 +51,27 @@ class WhatsappService extends Client {
             console.log("Escanea el codigo QR que esta en la carepta tmp");
             this.generateImage(qr);
         });
-    }
 
+        this.on('message', async (msg: Message) => {
+            // Verificar si el mensaje recibido es de un chat individual y no un mensaje del sistema
+            if (msg.fromMe || msg.from.includes('g.us')) {
+                // Si el mensaje es propio o de un grupo, ignorarlo
+                return;
+            }
+            console.log(msg)
+            const phone = msg.from.replace(/^\d{2}|\D+/g, '');
+            console.log(phone)
+
+            const survey: SurveyModel = {
+                campusId: 1,
+                clientId: 2,
+                userTechnicalId: 0,
+                rating: Number(msg.body)
+            }
+            await surveyMiddleware.apiCreateSurvey(survey)
+        });
+    }
+ 
 
     async getClientSession(): Promise<any> {
         try {
