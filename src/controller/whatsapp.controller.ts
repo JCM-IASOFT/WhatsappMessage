@@ -3,6 +3,8 @@ import fs from "fs"
 import { MessageModel } from "../model/message.model";
 import { whatsappService } from "../service/whatsapp.service";
 import { ResponseWtsp } from "../core/interface/response.interface";
+import { surveyMiddleware } from "../api/survey";
+import { SurveyModel } from "../core/interface/survey.interface";
 
 class WhatsappController {
 
@@ -37,6 +39,35 @@ class WhatsappController {
     public sendMsgTextCtrl = async (req: Request, res: Response) => {
         const { message, phone } = req.body;
         const response: ResponseWtsp = await whatsappService.sendMsgText({ message, phone })
+
+        if(response){
+            const parsePhone = phone.replace(/^\d{2}/, '')
+            const searchSurvey = await surveyMiddleware.apiFindSurvey(parsePhone)
+            
+            let survey: SurveyModel = {
+                clientId: 0,
+                userTechnicalId: 0,
+                rating: 0,
+                campusId: 0,
+                codeSurvey: "",
+                date: ''
+            }
+            
+            searchSurvey.forEach(item => {
+                survey = {
+                    surveyId: item.surveyId,
+                    codeSurvey: response._serialized,
+                    clientId: item.clientId,
+                    date: item.date,
+                    userTechnicalId: item.userTechnicalId,
+                    rating: item.rating,
+                    campusId: item.campusId
+                }
+
+            })
+
+            await surveyMiddleware.apiUpdateSurvey(survey)
+        }
         res.send(response);
     };
 

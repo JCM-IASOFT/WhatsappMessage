@@ -3,7 +3,9 @@ import { image as imageQr } from "qr-image";
 import fs from "fs/promises"
 import { MessageModel } from "../model/message.model";
 import { surveyMiddleware } from "../api/survey";
-import { SurveyModel } from "../core/interface/survey";
+import { SurveyModel } from "../core/interface/survey.interface";
+import { parametersMiddleware } from "../api/parameters";
+import { parametersConst } from "../core/constant/parameters";
 
 /**
  * Extendemos los super poderes de whatsapp-web
@@ -52,23 +54,83 @@ class WhatsappService extends Client {
             this.generateImage(qr);
         });
 
-        this.on('message', async (msg: Message) => {
+        this.on('message', async (message: Message) => {
             // Verificar si el mensaje recibido es de un chat individual y no un mensaje del sistema
-            if (msg.fromMe || msg.from.includes('g.us')) {
+            if (message.fromMe || message.from.includes('status@broadcast') || message.from.includes('@g.us')) {
                 // Si el mensaje es propio o de un grupo, ignorarlo
                 return;
             }
-            console.log(msg)
-            const phone = msg.from.replace(/^\d{2}|\D+/g, '');
-            console.log(phone)
 
-            const survey: SurveyModel = {
-                campusId: 1,
-                clientId: 2,
-                userTechnicalId: 0,
-                rating: Number(msg.body)
+            const phone = message.from.replace(/^\d{2}|\D+/g, '');
+
+            if(!phone) Promise.reject({error: 'Numero invalido'})
+            
+            const validateNumber = (number: number) => {
+                if(typeof number === 'number' && (number >= 1 && number <= 10)){
+                    return true
+                }
+                
+                return false
             }
-            await surveyMiddleware.apiCreateSurvey(survey)
+
+            if(!validateNumber(Number(message.body))) return;
+
+            const survey = await surveyMiddleware.apiFindSurvey(phone)
+            
+            if(survey && survey.length === 1){
+                const surveySent = await this.getMessageById(survey[0].codeSurvey)
+                const parseSurveyNumber = surveySent.to.replace(/^\d{2}|\D+/g, '');
+                
+                if(phone === parseSurveyNumber){
+                    const surveyData: SurveyModel = {
+                        clientId: survey[0].clientId,
+                        userTechnicalId: survey[0].userTechnicalId,
+                        date: survey[0].date,
+                        rating: Number(message.body),
+                        campusId: survey[0].campusId,
+                        codeSurvey: survey[0].codeSurvey
+                    }
+
+                    const updateResponse = await surveyMiddleware.apiUpdateSurvey(surveyData)
+
+                    if(updateResponse){
+                        const parameter = await parametersMiddleware.apiFindParametersMessage(parametersConst.CHATBOT, survey[0].campusId)
+
+                        await this.sendMsgText({
+                            message: parameter.value,
+                            phone: `51${phone}`
+                        })
+
+                        console.log('todo ok!!!')
+                    }
+                }
+            }else{
+                const currentDate = new Date();
+
+                /**
+                 * closeDate => fecha cercana a la actual
+                 * minorDifference => menor diferencia 
+                 */
+                let closeDate = survey[0].date;
+                let minorDifference = Math.abs(currentDate.getTime() - new Date(survey[0].date).getTime());
+                let currentSurvey: SurveyModel | undefined
+
+                survey.forEach(item => {
+                    if(item.date){
+                        const difference =  Math.abs(currentDate.getTime() - new Date(item.date).getTime());
+                        if(difference < minorDifference){
+                            minorDifference = difference
+                            closeDate = item.date
+                            currentSurvey = item
+                        }
+                    }
+                })
+                
+                const surveySent = await this.getMessageById(currentSurvey?.codeSurvey!)
+            }
+
+            // ** 1-10 nosotros
+            
         });
     }
  
@@ -175,8 +237,6 @@ class WhatsappService extends Client {
     getStatus(): boolean {
         return this.status;
     }
-
-
 
     private generateImage = (base64: string) => {
         const path = `${process.cwd()}/tmp`;
