@@ -76,42 +76,34 @@ class WhatsappService extends Client {
             if(!validateNumber(Number(message.body))) return;
 
             const survey = await surveyMiddleware.apiFindSurvey(phone)
-            
+
+            if(survey.length === 0) return;
+
             if(survey && survey.length === 1){
-                const surveySent = await this.getMessageById(survey[0].codeSurvey)
-                const parseSurveyNumber = surveySent.to.replace(/^\d{2}|\D+/g, '');
-                
-                if(phone === parseSurveyNumber){
-                    const surveyData: SurveyModel = {
-                        surveyId: survey[0].surveyId,
-                        clientId: survey[0].clientId,
-                        userTechnicalId: survey[0].userTechnicalId,
-                        date: survey[0].date,
-                        rating: Number(message.body),
-                        campusId: survey[0].campusId,
-                        codeSurvey: survey[0].codeSurvey,
-                        complete: true,
+                if(survey[0].codeSurvey && survey[0].codeSurvey !== ''){
+                    if(this.validateFormatIdMessage(survey[0].codeSurvey)){
+                        const surveySent = await this.getMsg(survey[0].codeSurvey)
+                        const parseSurveyNumber = surveySent.to.replace(/^\d{2}|\D+/g, '');
+                        
+                        if(phone === parseSurveyNumber){
+                            this.updateSurveyAndFarewellMessage(phone, survey, message)
+                        }else{
+                            return;
+                        }
+                    }else{
+                        console.log('Codigo de encuesta invalido')
+                        return;
                     }
-
-                    const updateResponse = await surveyMiddleware.apiUpdateSurvey(surveyData)
-
-                    if(updateResponse){
-                        const parameter = await parametersMiddleware.apiFindParametersMessage(parametersConst.CHATBOT, survey[0].campusId)
-                        console.log(parameter)
-                        await this.sendMsgText({
-                            message: parameter[0].value,
-                            phone: `51${phone}`
-                        })
-
-                        console.log('todo ok!!!')
-                    }
+                }else{
+                    console.log('Codigo de encuesta no existe o esta vacio')
                 }
             }else if(survey && survey.length > 1){
                 const currentDate = new Date();
 
                 /**
-                 * closeDate => fecha cercana a la actual
-                 * minorDifference => menor diferencia 
+                 * @closeDate => fecha cercana a la actual
+                 * @minorDifference => menor diferencia
+                 * @currentSurvey => registro de encuesta actual 
                  */
                 let closeDate = survey[0].date;
                 let minorDifference = Math.abs(currentDate.getTime() - new Date(survey[0].date).getTime());
@@ -128,41 +120,62 @@ class WhatsappService extends Client {
                     }
                 })
                 
-                const surveySent = await this.getMessageById(currentSurvey?.codeSurvey!)
-                const parseSurveyNumber = surveySent.to.replace(/^\d{2}|\D+/g, '');
-
-                if(phone === parseSurveyNumber){
-                    const surveyData: SurveyModel = {
-                        surveyId: survey[0].surveyId,
-                        clientId: survey[0].clientId,
-                        userTechnicalId: survey[0].userTechnicalId,
-                        date: survey[0].date,
-                        rating: Number(message.body),
-                        campusId: survey[0].campusId,
-                        codeSurvey: survey[0].codeSurvey,
-                        complete: true
+                if(currentSurvey?.codeSurvey && currentSurvey?.codeSurvey !== ''){
+                    if(this.validateFormatIdMessage(currentSurvey?.codeSurvey)){
+                        const surveySent = await this.getMessageById(currentSurvey?.codeSurvey!)
+                        const parseSurveyNumber = surveySent.to.replace(/^\d{2}|\D+/g, '');
+                        
+                        if(phone === parseSurveyNumber){
+                            this.updateSurveyAndFarewellMessage(phone, [currentSurvey!], message)
+                        }else{
+                            return;
+                        }
+                    }else{
+                        console.log('Codigo de encuesta invalido')
+                        return;
                     }
-
-                    const updateResponse = await surveyMiddleware.apiUpdateSurvey(surveyData)
-
-                    if(updateResponse){
-                        const parameter = await parametersMiddleware.apiFindParametersMessage(parametersConst.CHATBOT, survey[0].campusId)
-                        console.log(parameter)
-                        await this.sendMsgText({
-                            message: parameter[0].value,
-                            phone: `51${phone}`
-                        })
-
-                        console.log('todo ok!!!')
-                    }
+                }else{
+                    console.log('Codigo de encuesta no existe o esta vacio')
                 }
-            }
-
-            // ** 1-10 nosotros
-            
+            }else{
+                return;
+            }        
         });
     }
- 
+    
+    async updateSurveyAndFarewellMessage(phone: string, survey: SurveyModel[], message: Message){
+        const surveyData: SurveyModel = {
+            surveyId: survey[0].surveyId,
+            clientId: survey[0].clientId,
+            userTechnicalId: survey[0].userTechnicalId,
+            date: survey[0].date,
+            rating: Number(message.body),
+            campusId: survey[0].campusId,
+            codeSurvey: survey[0].codeSurvey,
+            complete: true
+        }
+
+        const updateResponse = await surveyMiddleware.apiUpdateSurvey(surveyData)
+
+        if(updateResponse.success){
+            const parameter = await parametersMiddleware.apiFindParametersMessage(parametersConst.CHATBOT, survey[0].campusId)
+            
+            if(parameter && parameter.length > 0){
+
+                await this.sendMsgText({
+                    message: parameter[0].value,
+                    phone: `51${phone}`
+                })
+
+                console.log('todo ok!!!')
+            }
+        }
+    }
+
+    validateFormatIdMessage(id: string): boolean {
+        const regex = /^(false|true)_[0-9]+@c\.us_[0-9A-F]+$/;
+        return regex.test(id);
+    }
 
     async getClientSession(): Promise<any> {
         try {
@@ -250,16 +263,16 @@ class WhatsappService extends Client {
         }
     }
 
-    async getMsg(id: string) {
+    async getMsg(id: string): Promise<Message> {
         try {
-            if (!this.status) return Promise.resolve({ error: "SIN INICIO DE SESION" });
+            if (!this.status) return Promise.reject({ error: "SIN INICIO DE SESION" });
 
             const message = await this.getMessageById(id)
 
             return message;
         } catch (e: any) {
             console.log(e.message)
-            return Promise.resolve({ error: e.message });
+            return Promise.reject({ error: e.message });
         }
     }
 

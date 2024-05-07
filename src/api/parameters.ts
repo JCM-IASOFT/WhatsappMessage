@@ -1,6 +1,7 @@
 import axios, { HttpStatusCode } from "axios";
 import { Response, Request } from "express";
 import { MessageApi } from "../core/constant/MessageApi";
+import { ParameterModel } from "../core/interface/parameter.interface";
 
 export class ParametersMiddleware{
     private static instance: ParametersMiddleware
@@ -11,12 +12,10 @@ export class ParametersMiddleware{
 
     private externalUrl = `${process.env.API_URL}/parameter`
 
-    async apiFindParametersMessage(group: string, campusId: number){
+    async apiFindParametersMessage(group: string, campusId: number): Promise<ParameterModel[]>{
         try {
 
-            if(!group && !campusId){
-                throw new Error(MessageApi.NOT_PARAMETER)
-            }
+            if(!group && !campusId) console.log(MessageApi.NOT_PARAMETER)
 
             const axiosConfig = {
                 params: {
@@ -26,13 +25,13 @@ export class ParametersMiddleware{
             }
 
             const findResponse = await axios.get(this.externalUrl, axiosConfig)
-            if(!findResponse){
-                throw new Error(MessageApi.NOT_CONTENT)
-            }
+            
+            if(!findResponse) console.log(MessageApi.NOT_CONTENT)
 
-            return findResponse.data
+            return findResponse.data as ParameterModel[]
         } catch (error) {
-            throw new Error(MessageApi.ERROR_SERVER)
+            // throw new Error(MessageApi.ERROR_SERVER)
+            return []
         }
     }
 }

@@ -1,3 +1,3 @@
 export const parametersConst = {
-    CHATBOT: 'chatbot'
+    CHATBOT: 'chat_bot'
 }
