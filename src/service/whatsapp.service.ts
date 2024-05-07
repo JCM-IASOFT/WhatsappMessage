@@ -83,28 +83,30 @@ class WhatsappService extends Client {
                 
                 if(phone === parseSurveyNumber){
                     const surveyData: SurveyModel = {
+                        surveyId: survey[0].surveyId,
                         clientId: survey[0].clientId,
                         userTechnicalId: survey[0].userTechnicalId,
                         date: survey[0].date,
                         rating: Number(message.body),
                         campusId: survey[0].campusId,
-                        codeSurvey: survey[0].codeSurvey
+                        codeSurvey: survey[0].codeSurvey,
+                        complete: true,
                     }
 
                     const updateResponse = await surveyMiddleware.apiUpdateSurvey(surveyData)
 
                     if(updateResponse){
                         const parameter = await parametersMiddleware.apiFindParametersMessage(parametersConst.CHATBOT, survey[0].campusId)
-
+                        console.log(parameter)
                         await this.sendMsgText({
-                            message: parameter.value,
+                            message: parameter[0].value,
                             phone: `51${phone}`
                         })
 
                         console.log('todo ok!!!')
                     }
                 }
-            }else{
+            }else if(survey && survey.length > 1){
                 const currentDate = new Date();
 
                 /**
@@ -127,6 +129,33 @@ class WhatsappService extends Client {
                 })
                 
                 const surveySent = await this.getMessageById(currentSurvey?.codeSurvey!)
+                const parseSurveyNumber = surveySent.to.replace(/^\d{2}|\D+/g, '');
+
+                if(phone === parseSurveyNumber){
+                    const surveyData: SurveyModel = {
+                        surveyId: survey[0].surveyId,
+                        clientId: survey[0].clientId,
+                        userTechnicalId: survey[0].userTechnicalId,
+                        date: survey[0].date,
+                        rating: Number(message.body),
+                        campusId: survey[0].campusId,
+                        codeSurvey: survey[0].codeSurvey,
+                        complete: true
+                    }
+
+                    const updateResponse = await surveyMiddleware.apiUpdateSurvey(surveyData)
+
+                    if(updateResponse){
+                        const parameter = await parametersMiddleware.apiFindParametersMessage(parametersConst.CHATBOT, survey[0].campusId)
+                        console.log(parameter)
+                        await this.sendMsgText({
+                            message: parameter[0].value,
+                            phone: `51${phone}`
+                        })
+
+                        console.log('todo ok!!!')
+                    }
+                }
             }
 
             // ** 1-10 nosotros

@@ -1,5 +1,5 @@
 import axios, { HttpStatusCode } from "axios"
-import { Request, Response } from "express"
+import e, { Request, Response } from "express"
 import { MessageApi } from "../core/constant/MessageApi"
 import { SurveyModel } from "../core/interface/survey.interface"
 
@@ -56,28 +56,59 @@ export class SurveyMiddleware{
         }
     }
 
-    async apiUpdateSurvey(survey: SurveyModel){
+    async apiUpdateSurveyByCode(survey: SurveyModel){
         try {
-            if(!survey) Promise.reject({error: MessageApi.NOT_PARAMETER})
+            if(!survey) throw {error: MessageApi.NOT_PARAMETER}
 
             const updateUrl = `${this.externalUrl}/update`
 
             const axiosConfig = {
                 survey: {
                     surveyId: survey.surveyId,
-                    codeSurvey: survey.codeSurvey
+                    codeSurvey: survey.codeSurvey,
                 }
             }
 
             const updateResponse = await axios.put(updateUrl, axiosConfig)
 
-            if(!updateResponse) Promise.reject({error: MessageApi.NOT_CONTENT})
+            if(!updateResponse) throw {error: MessageApi.NOT_CONTENT}
 
-            return Promise.resolve(updateResponse.data)
+            return updateResponse.data
         } catch (error) {
-            Promise.reject({error: MessageApi.ERROR_SERVER})
+            throw { error: MessageApi.ERROR_SERVER };
         }
     }
+
+    async apiUpdateSurvey(survey: SurveyModel){
+        try {
+            if(!survey) throw {error: MessageApi.NOT_PARAMETER}
+
+            const updateUrl = `${this.externalUrl}/update`
+
+            const axiosConfig = {
+                survey: {
+                    surveyId: survey.surveyId,
+                    codeSurvey: survey.codeSurvey,
+                    complete: survey.complete,
+                    rating: survey.rating,
+                    date: survey.date,
+                    clientId: survey.clientId,
+                    userTechnicalId: survey.userTechnicalId,
+                    campusId: survey.campusId
+                }
+            }
+
+            const updateResponse = await axios.put(updateUrl, axiosConfig)
+
+            if(!updateResponse) throw {error: MessageApi.NOT_CONTENT}
+
+            return updateResponse.data
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    
 }
 
 export const surveyMiddleware = SurveyMiddleware.getInstance()

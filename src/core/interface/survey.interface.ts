@@ -5,5 +5,6 @@ export interface SurveyModel{
     date: Date | string
     rating: number
     campusId: number
-    codeSurvey: string
+    codeSurvey: string,
+    complete: boolean
 }

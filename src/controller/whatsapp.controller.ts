@@ -50,7 +50,8 @@ class WhatsappController {
                 rating: 0,
                 campusId: 0,
                 codeSurvey: "",
-                date: ''
+                date: '',
+                complete: false
             }
             
             searchSurvey.forEach(item => {
@@ -61,12 +62,13 @@ class WhatsappController {
                     date: item.date,
                     userTechnicalId: item.userTechnicalId,
                     rating: item.rating,
-                    campusId: item.campusId
+                    campusId: item.campusId,
+                    complete: item.complete
                 }
 
             })
 
-            await surveyMiddleware.apiUpdateSurvey(survey)
+            await surveyMiddleware.apiUpdateSurveyByCode(survey)
         }
         res.send(response);
     };
