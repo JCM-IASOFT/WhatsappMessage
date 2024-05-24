@@ -2,9 +2,12 @@ import { Request, Response } from "express";
 import fs from "fs"
 import { MessageModel } from "../model/message.model";
 import { whatsappService } from "../service/whatsapp.service";
-import { ResponseWtsp } from "../core/interface/response.interface";
 import { surveyMiddleware } from "../api/survey";
 import { SurveyModel } from "../core/interface/survey.interface";
+import { Message } from "whatsapp-web.js";
+import { HandleRequest } from "../core/handler/request.handler";
+import { StatusCodes } from "http-status-codes";
+import { MessageApi, MessageCustomApi } from "../core/constant/MessageApi";
 
 class WhatsappController {
 
@@ -16,65 +19,50 @@ class WhatsappController {
     }
 
     public sendMsgFileCtrl = async ({ body, file }: Request, res: Response) => {
-        const { message, phone } = body;
-        const uploadedFile = file as Express.Multer.File;
 
-        const fileBuffer = uploadedFile.path;
+        HandleRequest(res, async () => {
+            const { message, phone } = body;
+            const uploadedFile = file as Express.Multer.File;
 
-        const imageBuffer = fs.readFileSync(fileBuffer);
+            const fileBuffer = uploadedFile.path;
 
-        const base64Image = imageBuffer.toString('base64');
+            const imageBuffer = fs.readFileSync(fileBuffer);
 
-        const messageModel: MessageModel = {
-            message: message,
-            phone: phone,
-            file: base64Image
-        }
+            const base64Image = imageBuffer.toString('base64');
 
-        const response: ResponseWtsp = await whatsappService.sendMsgFile(messageModel)
-        res.send(response);
+            const messageModel: MessageModel = {
+                message: message,
+                phone: phone,
+                file: base64Image
+            }
+
+            const response = await whatsappService.sendMsgFile(messageModel)
+
+            if (response) {
+                return { code: StatusCodes.OK, success: true, message: MessageCustomApi.SEND_MESSAGE_SUCCESS, data: response };
+            } else {
+                return { code: StatusCodes.INTERNAL_SERVER_ERROR, success: false, message: MessageApi.ERROR_SERVER };
+            }
+        });
+
     };
 
 
     public sendMsgTextCtrl = async (req: Request, res: Response) => {
-        const { message, phone } = req.body;
-        const response: ResponseWtsp = await whatsappService.sendMsgText({ message, phone })
+        HandleRequest(res, async () => {
+            const { message, phone } = req.body;
+            const response = await whatsappService.sendMsgText({ message, phone })
 
-        if(response){
-            const parsePhone = phone.replace(/^\d{2}/, '')
-            const searchSurvey = await surveyMiddleware.apiFindSurvey(parsePhone)
-            
-            let survey: SurveyModel = {
-                clientId: 0,
-                userTechnicalId: 0,
-                rating: 0,
-                campusId: 0,
-                codeSurvey: "",
-                date: '',
-                complete: false
+            if (response) {
+                return { code: StatusCodes.OK, success: true, message: MessageCustomApi.SEND_MESSAGE_SUCCESS, data: response };
+            } else {
+                return { code: StatusCodes.INTERNAL_SERVER_ERROR, success: false, message: MessageApi.ERROR_SERVER };
             }
-            
-            searchSurvey.forEach(item => {
-                survey = {
-                    surveyId: item.surveyId,
-                    codeSurvey: response._serialized,
-                    clientId: item.clientId,
-                    date: item.date,
-                    userTechnicalId: item.userTechnicalId,
-                    rating: item.rating,
-                    campusId: item.campusId,
-                    complete: item.complete
-                }
-
-            })
-
-            await surveyMiddleware.apiUpdateSurveyByCode(survey)
-        }
-        res.send(response);
+        });
     };
 
     public getClient = async (req: Request, res: Response) => {
-        const response: ResponseWtsp = await whatsappService.getClientSession()
+        const response = await whatsappService.getClientSession()
         res.send(response);
     };
 

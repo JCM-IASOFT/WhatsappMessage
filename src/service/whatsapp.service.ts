@@ -6,6 +6,7 @@ import { surveyMiddleware } from "../api/survey";
 import { SurveyModel } from "../core/interface/survey.interface";
 import { parametersMiddleware } from "../api/parameters";
 import { parametersConst } from "../core/constant/parameters";
+import { ResponseModel } from "../core/handler/response.handler";
 
 /**
  * Extendemos los super poderes de whatsapp-web
@@ -63,41 +64,41 @@ class WhatsappService extends Client {
 
             const phone = message.from.replace(/^\d{2}|\D+/g, '');
 
-            if(!phone) Promise.reject({error: 'Numero invalido'})
-            
+            if (!phone) Promise.reject({ error: 'Numero invalido' })
+
             const validateNumber = (number: number) => {
-                if(typeof number === 'number' && (number >= 1 && number <= 10)){
+                if (typeof number === 'number' && (number >= 1 && number <= 10)) {
                     return true
                 }
-                
+
                 return false
             }
 
-            if(!validateNumber(Number(message.body))) return;
+            if (!validateNumber(Number(message.body))) return;
 
             const survey = await surveyMiddleware.apiFindSurvey(phone)
 
-            if(survey.length === 0) return;
+            if (survey.length === 0) return;
 
-            if(survey && survey.length === 1){
-                if(survey[0].codeSurvey && survey[0].codeSurvey !== ''){
-                    if(this.validateFormatIdMessage(survey[0].codeSurvey)){
+            if (survey && survey.length === 1) {
+                if (survey[0].codeSurvey && survey[0].codeSurvey !== '') {
+                    if (this.validateFormatIdMessage(survey[0].codeSurvey)) {
                         const surveySent = await this.getMsg(survey[0].codeSurvey)
                         const parseSurveyNumber = surveySent.to.replace(/^\d{2}|\D+/g, '');
-                        
-                        if(phone === parseSurveyNumber){
+
+                        if (phone === parseSurveyNumber) {
                             this.updateSurveyAndFarewellMessage(phone, survey, message)
-                        }else{
+                        } else {
                             return;
                         }
-                    }else{
+                    } else {
                         console.log('Codigo de encuesta invalido')
                         return;
                     }
-                }else{
+                } else {
                     console.log('Codigo de encuesta no existe o esta vacio')
                 }
-            }else if(survey && survey.length > 1){
+            } else if (survey && survey.length > 1) {
                 const currentDate = new Date();
 
                 /**
@@ -110,40 +111,40 @@ class WhatsappService extends Client {
                 let currentSurvey: SurveyModel | undefined
 
                 survey.forEach(item => {
-                    if(item.date){
-                        const difference =  Math.abs(currentDate.getTime() - new Date(item.date).getTime());
-                        if(difference < minorDifference){
+                    if (item.date) {
+                        const difference = Math.abs(currentDate.getTime() - new Date(item.date).getTime());
+                        if (difference < minorDifference) {
                             minorDifference = difference
                             closeDate = item.date
                             currentSurvey = item
                         }
                     }
                 })
-                
-                if(currentSurvey?.codeSurvey && currentSurvey?.codeSurvey !== ''){
-                    if(this.validateFormatIdMessage(currentSurvey?.codeSurvey)){
+
+                if (currentSurvey?.codeSurvey && currentSurvey?.codeSurvey !== '') {
+                    if (this.validateFormatIdMessage(currentSurvey?.codeSurvey)) {
                         const surveySent = await this.getMessageById(currentSurvey?.codeSurvey!)
                         const parseSurveyNumber = surveySent.to.replace(/^\d{2}|\D+/g, '');
-                        
-                        if(phone === parseSurveyNumber){
+
+                        if (phone === parseSurveyNumber) {
                             this.updateSurveyAndFarewellMessage(phone, [currentSurvey!], message)
-                        }else{
+                        } else {
                             return;
                         }
-                    }else{
+                    } else {
                         console.log('Codigo de encuesta invalido')
                         return;
                     }
-                }else{
+                } else {
                     console.log('Codigo de encuesta no existe o esta vacio')
                 }
-            }else{
+            } else {
                 return;
-            }        
+            }
         });
     }
-    
-    async updateSurveyAndFarewellMessage(phone: string, survey: SurveyModel[], message: Message){
+
+    async updateSurveyAndFarewellMessage(phone: string, survey: SurveyModel[], message: Message) {
         const surveyData: SurveyModel = {
             surveyId: survey[0].surveyId,
             clientId: survey[0].clientId,
@@ -157,10 +158,10 @@ class WhatsappService extends Client {
 
         const updateResponse = await surveyMiddleware.apiUpdateSurvey(surveyData)
 
-        if(updateResponse.success){
+        if (updateResponse.success) {
             const parameter = await parametersMiddleware.apiFindParametersMessage(parametersConst.CHATBOT, survey[0].campusId)
-            
-            if(parameter && parameter.length > 0){
+
+            if (parameter && parameter.length > 0) {
 
                 await this.sendMsgText({
                     message: parameter[0].value,
@@ -231,22 +232,22 @@ class WhatsappService extends Client {
         return this.status;
     }
 
-    async sendMsgText(message: MessageModel): Promise<any> {
+    async sendMsgText(message: MessageModel): Promise<Message | null> {
         try {
-            if (!this.status) return Promise.resolve({ error: "SIN INICIO DE SESION" });
+            if (!this.status) return null
 
             const response = await this.sendMessage(`${message.phone}@c.us`, message.message);
-            return response.id;
+            return response;
         } catch (e: any) {
             console.log(e.message)
-            return Promise.resolve({ error: e.message });
+            return null
         }
     }
 
 
-    async sendMsgFile(message: MessageModel): Promise<any> {
+    async sendMsgFile(message: MessageModel): Promise<Message | Error> {
         try {
-            if (!this.status) return Promise.resolve({ error: "SIN INICIO DE SESION" });
+            if (!this.status) return new Error("SIN INICIO DE SESION");
 
             const media = new MessageMedia("application/pdf", message.file!, "document")
 
@@ -256,10 +257,10 @@ class WhatsappService extends Client {
             }
 
             const response = await this.sendMessage(`${message.phone}@c.us`, message.message, messageOption);
-            return response.id.id;
+            return response;
         } catch (e: any) {
             console.log(e.message)
-            return Promise.resolve({ error: e.message });
+            return e;
         }
     }
 

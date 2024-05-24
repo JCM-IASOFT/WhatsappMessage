@@ -1,3 +1,6 @@
+.wwebjs_auth/
+build/
+
 # Logs
 logs
 *.log

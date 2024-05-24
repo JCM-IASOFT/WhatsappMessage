@@ -12,3 +12,7 @@ export const MessageApi = {
     INVALID_TOKEN: 'Token es inválido',
     NOT_CONTENT: 'No contamos con datos que coincidan.',
 };
+
+export const MessageCustomApi = {
+    SEND_MESSAGE_SUCCESS: "Mensaje enviado correctamente"
+}
