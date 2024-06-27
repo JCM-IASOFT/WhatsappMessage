@@ -36,7 +36,7 @@ class WhatsappController {
                 file: base64Image
             }
 
-            const response = await whatsappService.sendMsgFile(messageModel)
+            const response = await whatsappService.sendMsgFile(messageModel, uploadedFile.originalname)
 
             if (response) {
                 return { code: StatusCodes.OK, success: true, message: MessageCustomApi.SEND_MESSAGE_SUCCESS, data: response };

@@ -245,11 +245,11 @@ class WhatsappService extends Client {
     }
 
 
-    async sendMsgFile(message: MessageModel): Promise<Message | Error> {
+    async sendMsgFile(message: MessageModel, fileName: string): Promise<Message | Error> {
         try {
             if (!this.status) return new Error("SIN INICIO DE SESION");
 
-            const media = new MessageMedia("application/pdf", message.file!, "document")
+            const media = new MessageMedia("application/pdf", message.file!, fileName)
 
 
             const messageOption: MessageSendOptions = {
@@ -278,6 +278,8 @@ class WhatsappService extends Client {
     }
 
     getStatus(): boolean {
+        console.log("ddd", this.status)
+
         return this.status;
     }
 
