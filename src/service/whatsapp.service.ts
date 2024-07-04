@@ -22,6 +22,7 @@ class WhatsappService extends Client {
     private status = false;
 
     constructor() {
+        const wwebVersion = '2.2412.54';
         super({
             authStrategy: new LocalAuth(),
             restartOnAuthFail: true,
@@ -33,7 +34,7 @@ class WhatsappService extends Client {
             },
             webVersionCache: {
                 type: 'remote',
-                remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html',
+                remotePath: `https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/${wwebVersion}.html`,
             },
         });
         console.log("Iniciando....");
@@ -257,6 +258,8 @@ class WhatsappService extends Client {
             }
 
             const response = await this.sendMessage(`${message.phone}@c.us`, message.message, messageOption);
+
+            console.log(response)
             return response;
         } catch (e: any) {
             console.log(e.message)
